@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>🌍 Planet Clicker - أونلاين مع أصدقاء</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
+        body {
+            background: radial-gradient(circle at 30% 20%, #0a0f2a, #030617);
+            font-family: 'Segoe UI', 'Cairo', Tahoma, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 16px;
+        }
+        .game-container {
+            max-width: 1200px;
+            width: 100%;
+            background: rgba(0,0,0,0.55);
+            backdrop-filter: blur(12px);
+            border-radius: 60px;
+            padding: 20px;
+            border: 1px solid #ffaa66;
+            box-shadow: 0 20px 35px rgba(0,0,0,0.4);
+        }
+        .login-screen {
+            position: fixed;
+            top:0; left:0; width:100%; height:100%;
+            background: rgba(0,0,0,0.9);
+            backdrop-filter: blur(12px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+        .login-card {
+            background: #2c3e2f;
+            border-radius: 60px;
+            padding: 30px;
+            text-align: center;
+            width: 90%;
+            max-width: 400px;
+            border: 1px solid #ffaa55;
+        }
+        .login-card input, .login-card button {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 40px;
+            border: none;
+            font-size: 1rem;
+        }
+        .login-card input { background: #1e2e3a; color: white; }
+        .login-card button { background: #e67e22; color: white; font-weight: bold; cursor: pointer; }
+        .switch { margin-top: 15px; color: #aaccee; cursor: pointer; }
+        .game-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .user-info {
+            background: #00000066;
+            padding: 6px 18px;
+            border-radius: 40px;
+            font-weight: bold;
+        }
+        .planet-area {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .planet {
+            width: 220px;
+            height: 220px;
+            background: radial-gradient(circle at 30% 30%, #f4a261, #e76f51);
+            border-radius: 50%;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 5rem;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            transition: 0.07s linear;
+        }
+        .planet:active { transform: scale(0.95); }
+        .score-board {
+            background: #00000066;
+            border-radius: 60px;
+            padding: 12px;
+            text-align: center;
+            font-size: 1.8rem;
+            font-weight: bold;
+            margin: 15px 0;
+        }
+        .upgrades {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
+        .upgrade-card {
+            background: #1e2a32aa;
+            border-radius: 40px;
+            padding: 15px;
+            text-align: center;
+            flex: 1;
+            min-width: 180px;
+        }
+        .friends-section {
+            background: #0a1522aa;
+            border-radius: 40px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+        .friend-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        .friend-item {
+            background: #1e2e3a;
+            padding: 6px 12px;
+            border-radius: 30px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .send-coins { background: #2a7a4a; border: none; padding: 2px 8px; border-radius: 20px; cursor: pointer; }
+        .add-friend-form {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        input, button { font-family: inherit; }
+        .status { background: #00000066; border-radius: 40px; padding: 8px; text-align: center; margin-top: 10px; font-size: 0.8rem; }
+        button { cursor: pointer; transition: 0.1s; }
+        button:active { transform: scale(0.96); }
+        @media (max-width: 700px) {
+            .planet { width: 140px; height: 140px; font-size: 3rem; }
+            .score-board { font-size: 1.2rem; }
+        }
+    </style>
+    <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+<div id="loginScreen" class="login-screen">
+    <div class="login-card">
+        <h2>🌍 Planet Clicker</h2>
+        <p>تسجيل الدخول أو إنشاء حساب</p>
+        <input type="text" id="loginUsername" placeholder="اسم المستخدم">
+        <input type="password" id="loginPassword" placeholder="كلمة المرور">
+        <button id="loginBtn">دخول</button>
+        <div class="switch" id="showRegisterBtn">ليس لديك حساب؟ إنشاء حساب جديد</div>
+        <div id="loginError" style="color:#ffaaaa; margin-top:10px;"></div>
+    </div>
+</div>
+
+<div id="gameArea" style="display:none;">
+    <div class="game-container">
+        <div class="game-header">
+            <div class="user-info">👤 <span id="usernameDisplay"></span></div>
+            <div class="user-info">💰 <span id="coinsDisplay">0</span></div>
+            <div class="user-info">⚡ قوة النقرة: <span id="clickPowerDisplay">1</span></div>
+            <div class="user-info">🤖 نقرة تلقائية: <span id="autoClickerDisplay">0</span></div>
+        </div>
+
+        <div class="planet-area">
+            <div class="planet" id="planetBtn">🌍</div>
+        </div>
+
+        <div class="score-board" id="scoreBoard">نقاطك: <span id="coinsBig">0</span></div>
+
+        <div class="upgrades">
+            <div class="upgrade-card">
+                <h3>💪 قوة النقرة +1</h3>
+                <p>السعر: <span id="clickPowerCost">50</span></p>
+                <button id="buyClickPowerBtn">شراء</button>
+            </div>
+            <div class="upgrade-card">
+                <h3>🤖 نقرة تلقائية +1/ث</h3>
+                <p>السعر: <span id="autoClickerCost">200</span></p>
+                <button id="buyAutoClickerBtn">شراء</button>
+            </div>
+        </div>
+
+        <div class="friends-section">
+            <h3>👥 أصدقائي</h3>
+            <div id="friendsList" class="friend-list"></div>
+            <div class="add-friend-form">
+                <input type="text" id="friendNameInput" placeholder="اسم المستخدم">
+                <button id="addFriendBtn">➕ إضافة صديق</button>
+            </div>
+        </div>
+        <div id="statusMsg" class="status"></div>
+    </div>
+</div>
+
+<script>
+    const socket = io();
+    let currentUser = null;
+    let autoClickerInterval = null;
+
+    // عناصر DOM
+    const loginScreen = document.getElementById('loginScreen');
+    const gameArea = document.getElementById('gameArea');
+    const loginUsername = document.getElementById('loginUsername');
+    const loginPassword = document.getElementById('loginPassword');
+    const loginBtn = document.getElementById('loginBtn');
+    const showRegisterBtn = document.getElementById('showRegisterBtn');
+    const loginError = document.getElementById('loginError');
+
+    const usernameDisplay = document.getElementById('usernameDisplay');
+    const coinsDisplay = document.getElementById('coinsDisplay');
+    const coinsBig = document.getElementById('coinsBig');
+    const clickPowerDisplay = document.getElementById('clickPowerDisplay');
+    const autoClickerDisplay = document.getElementById('autoClickerDisplay');
+    const clickPowerCostSpan = document.getElementById('clickPowerCost');
+    const autoClickerCostSpan = document.getElementById('autoClickerCost');
+    const planetBtn = document.getElementById('planetBtn');
+    const buyClickPowerBtn = document.getElementById('buyClickPowerBtn');
+    const buyAutoClickerBtn = document.getElementById('buyAutoClickerBtn');
+    const friendsListDiv = document.getElementById('friendsList');
+    const friendNameInput = document.getElementById('friendNameInput');
+    const addFriendBtn = document.getElementById('addFriendBtn');
+    const statusMsgDiv = document.getElementById('statusMsg');
+
+    let currentCoins = 0;
+    let currentClickPower = 1;
+    let currentAutoClicker = 0;
+    let friends = [];
+
+    function showStatus(msg, isError = false) {
+        statusMsgDiv.innerHTML = `<span style="color:${isError ? '#ffaaaa' : '#88ffaa'}">${msg}</span>`;
+        setTimeout(() => { if (statusMsgDiv.innerHTML.includes(msg)) statusMsgDiv.innerHTML = ''; }, 3000);
+    }
+
+    function updateUI() {
+        coinsDisplay.innerText = currentCoins;
+        coinsBig.innerText = currentCoins;
+        clickPowerDisplay.innerText = currentClickPower;
+        autoClickerDisplay.innerText = currentAutoClicker;
+        // تحديث الأسعار
+        clickPowerCostSpan.innerText = 50 + (currentClickPower - 1) * 30;
+        autoClickerCostSpan.innerText = 200 + (currentAutoClicker) * 100;
+        // عرض الأصدقاء
+        friendsListDiv.innerHTML = '';
+        friends.forEach(friend => {
+            const friendDiv = document.createElement('div');
+            friendDiv.className = 'friend-item';
+            friendDiv.innerHTML = `
+                👤 ${friend}
+                <button class="send-coins" data-friend="${friend}">💰 إرسال نقود</button>
+            `;
+            friendsListDiv.appendChild(friendDiv);
+        });
+        // إضافة مستمعين لأزرار إرسال النقود
+        document.querySelectorAll('.send-coins').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const friend = btn.getAttribute('data-friend');
+                const amount = prompt(`كم نقطة تريد إرسالها إلى ${friend}؟`, '10');
+                if (amount && !isNaN(amount) && parseInt(amount) > 0) {
+                    socket.emit('send-coins', { to: friend, amount: parseInt(amount) });
+                } else if (amount !== null) alert('أدخل رقماً صحيحاً أكبر من 0');
+            });
+        });
+    }
+
+    // بدء النقرة التلقائية إذا كانت موجودة
+    function startAutoClicker() {
+        if (autoClickerInterval) clearInterval(autoClickerInterval);
+        if (currentAutoClicker > 0) {
+            autoClickerInterval = setInterval(() => {
+                socket.emit('click-planet');
+            }, 1000);
+        }
+    }
+
+    // أحداث Socket.IO
+    socket.on('init-data', (data) => {
+        currentCoins = data.coins;
+        currentClickPower = data.clickPower;
+        currentAutoClicker = data.autoClicker;
+        friends = data.friends;
+        updateUI();
+        startAutoClicker();
+    });
+
+    socket.on('coins-update', (data) => {
+        currentCoins = data.coins;
+        updateUI();
+    });
+
+    socket.on('upgrade-bought', (data) => {
+        if (data.type === 'clickPower') currentClickPower = data.newValue;
+        else if (data.type === 'autoClicker') {
+            currentAutoClicker = data.newValue;
+            startAutoClicker();
+        }
+        currentCoins = data.coins;
+        updateUI();
+        showStatus(`✅ تم شراء الترقية!`);
+    });
+
+    socket.on('received-coins', (data) => {
+        showStatus(`🎁 استلمت ${data.amount} نقطة من ${data.from}`);
+    });
+
+    socket.on('coins-sent', (data) => {
+        showStatus(`✅ تم إرسال ${data.amount} نقطة إلى ${data.to}`);
+    });
+
+    socket.on('error', (msg) => {
+        showStatus(`❌ ${msg}`, true);
+    });
+
+    // أزرار اللعبة
+    planetBtn.addEventListener('click', () => {
+        socket.emit('click-planet');
+    });
+
+    buyClickPowerBtn.addEventListener('click', () => {
+        socket.emit('buy-upgrade', { type: 'clickPower' });
+    });
+
+    buyAutoClickerBtn.addEventListener('click', () => {
+        socket.emit('buy-upgrade', { type: 'autoClicker' });
+    });
+
+    // إدارة الأصدقاء
+    addFriendBtn.addEventListener('click', async () => {
+        const friendName = friendNameInput.value.trim();
+        if (!friendName) return;
+        try {
+            const res = await fetch('/api/add-friend', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ friendName })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                friends = data.friends;
+                updateUI();
+                friendNameInput.value = '';
+                showStatus(`✅ تم إضافة ${friendName} كصديق`);
+            } else {
+                showStatus(`❌ ${data.error}`, true);
+            }
+        } catch(e) { showStatus('خطأ في الاتصال', true); }
+    });
+
+    // المصادقة
+    async function register(username, password) {
+        const res = await fetch('/api/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+        return res.json();
+    }
+
+    async function login(username, password) {
+        const res = await fetch('/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+        return res.json();
+    }
+
+    let isRegisterMode = false;
+    showRegisterBtn.onclick = () => {
+        isRegisterMode = !isRegisterMode;
+        if (isRegisterMode) {
+            showRegisterBtn.innerText = 'لديك حساب؟ تسجيل الدخول';
+            loginBtn.innerText = 'إنشاء حساب';
+        } else {
+            showRegisterBtn.innerText = 'ليس لديك حساب؟ إنشاء حساب جديد';
+            loginBtn.innerText = 'دخول';
+        }
+        loginError.innerText = '';
+    };
+
+    loginBtn.onclick = async () => {
+        const username = loginUsername.value.trim();
+        const password = loginPassword.value.trim();
+        if (!username || !password) {
+            loginError.innerText = 'يرجى إدخال اسم المستخدم وكلمة المرور';
+            return;
+        }
+        if (isRegisterMode) {
+            const data = await register(username, password);
+            if (data.success) {
+                loginError.innerText = '✅ تم التسجيل بنجاح، يمكنك الآن تسجيل الدخول';
+                isRegisterMode = false;
+                showRegisterBtn.innerText = 'ليس لديك حساب؟ إنشاء حساب جديد';
+                loginBtn.innerText = 'دخول';
+                loginUsername.value = username;
+                loginPassword.value = '';
+            } else {
+                loginError.innerText = data.error;
+            }
+        } else {
+            const data = await login(username, password);
+            if (data.success) {
+                currentUser = username;
+                usernameDisplay.innerText = username;
+                socket.emit('user-login', username);
+                loginScreen.style.display = 'none';
+                gameArea.style.display = 'block';
+                // جلب بيانات المستخدم عبر API
+                const meRes = await fetch('/api/me');
+                const meData = await meRes.json();
+                if (meData.username) {
+                    currentCoins = meData.coins;
+                    currentClickPower = meData.clickPower;
+                    currentAutoClicker = meData.autoClicker;
+                    friends = meData.friends;
+                    updateUI();
+                    startAutoClicker();
+                }
+            } else {
+                loginError.innerText = data.error;
+            }
+        }
+    };
+</script>
+</body>
+</html>
