@@ -2,28 +2,78 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>🌍 Planet Clicker - أونلاين مع أصدقاء</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    <title>📄 Paper.io 2 – أونلاين (يدعم اللمس)</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
         body {
-            background: radial-gradient(circle at 30% 20%, #0a0f2a, #030617);
+            background: linear-gradient(145deg, #1a2f3a, #0a1f2a);
             font-family: 'Segoe UI', 'Cairo', Tahoma, sans-serif;
-            min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
+            min-height: 100vh;
             padding: 16px;
+            touch-action: manipulation;
         }
         .game-container {
-            max-width: 1200px;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(8px);
+            border-radius: 48px;
+            padding: 15px;
+            border: 1px solid #ffcc88;
+        }
+        canvas {
+            display: block;
+            margin: 0 auto;
+            border-radius: 24px;
+            background: #1a2a2a;
+            box-shadow: 0 8px 20px black;
             width: 100%;
-            background: rgba(0,0,0,0.55);
-            backdrop-filter: blur(12px);
+            height: auto;
+        }
+        .info-panel {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 12px;
+            background: #00000066;
             border-radius: 60px;
-            padding: 20px;
-            border: 1px solid #ffaa66;
-            box-shadow: 0 20px 35px rgba(0,0,0,0.4);
+            padding: 8px 16px;
+            color: #ffefb9;
+            font-weight: bold;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .touch-buttons {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            z-index: 200;
+            pointer-events: auto;
+        }
+        .touch-btn {
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(8px);
+            border: 2px solid #ffaa66;
+            width: 65px;
+            height: 65px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            font-weight: bold;
+            color: white;
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+        .touch-btn:active {
+            transform: scale(0.95);
+            background: #e67e22;
         }
         .login-screen {
             position: fixed;
@@ -54,95 +104,9 @@
         }
         .login-card input { background: #1e2e3a; color: white; text-align: center; }
         .login-card button { background: #e67e22; color: white; font-weight: bold; cursor: pointer; }
-        .game-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-        .user-info {
-            background: #00000066;
-            padding: 6px 18px;
-            border-radius: 40px;
-            font-weight: bold;
-        }
-        .planet-area {
-            text-align: center;
-            margin: 20px 0;
-        }
-        .planet {
-            width: 220px;
-            height: 220px;
-            background: radial-gradient(circle at 30% 30%, #f4a261, #e76f51);
-            border-radius: 50%;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 5rem;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-            transition: 0.07s linear;
-        }
-        .planet:active { transform: scale(0.95); }
-        .score-board {
-            background: #00000066;
-            border-radius: 60px;
-            padding: 12px;
-            text-align: center;
-            font-size: 1.8rem;
-            font-weight: bold;
-            margin: 15px 0;
-        }
-        .upgrades {
-            display: flex;
-            gap: 15px;
-            justify-content: center;
-            flex-wrap: wrap;
-            margin: 20px 0;
-        }
-        .upgrade-card {
-            background: #1e2a32aa;
-            border-radius: 40px;
-            padding: 15px;
-            text-align: center;
-            flex: 1;
-            min-width: 180px;
-        }
-        .friends-section {
-            background: #0a1522aa;
-            border-radius: 40px;
-            padding: 15px;
-            margin-top: 20px;
-        }
-        .friend-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin: 10px 0;
-        }
-        .friend-item {
-            background: #1e2e3a;
-            padding: 6px 12px;
-            border-radius: 30px;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .send-coins { background: #2a7a4a; border: none; padding: 2px 8px; border-radius: 20px; cursor: pointer; }
-        .add-friend-form {
-            display: flex;
-            gap: 10px;
-            margin-top: 10px;
-        }
-        input, button { font-family: inherit; }
-        .status { background: #00000066; border-radius: 40px; padding: 8px; text-align: center; margin-top: 10px; font-size: 0.8rem; }
-        button { cursor: pointer; transition: 0.1s; }
-        button:active { transform: scale(0.96); }
-        @media (max-width: 700px) {
-            .planet { width: 140px; height: 140px; font-size: 3rem; }
-            .score-board { font-size: 1.2rem; }
+        .status { background: #00000066; border-radius: 40px; padding: 8px; text-align: center; margin-top: 10px; font-size: 0.75rem; }
+        @media (max-width: 600px) {
+            .touch-btn { width: 55px; height: 55px; font-size: 1.6rem; }
         }
     </style>
     <script src="/socket.io/socket.io.js"></script>
@@ -150,205 +114,77 @@
 <body>
 <div id="loginScreen" class="login-screen">
     <div class="login-card">
-        <h2>🌍 Planet Clicker</h2>
+        <h2>📄 Paper.io 2</h2>
         <p>سجل دخولك باستخدام الاسم ورقم الهاتف</p>
         <input type="text" id="loginName" placeholder="الاسم">
         <input type="tel" id="loginPhone" placeholder="رقم الهاتف">
         <button id="loginBtn">🎮 دخول / تسجيل</button>
         <div id="loginError" style="color:#ffaaaa; margin-top:10px;"></div>
-        <div style="font-size:0.7rem; margin-top:15px;">🔐 إذا كان الاسم والرقم جديدين، سيتم إنشاء حساب. إذا كانا موجودين، يتم تحميل تقدمك السابق.</div>
+        <div style="font-size:0.7rem; margin-top:15px;">🔐 إذا كان الاسم والرقم جديدين، سيتم إنشاء حساب. حفظ التقدم في الخادم (ذاكرة مؤقتة).</div>
     </div>
 </div>
 
 <div id="gameArea" style="display:none;">
     <div class="game-container">
-        <div class="game-header">
-            <div class="user-info">👤 <span id="usernameDisplay"></span></div>
-            <div class="user-info">📞 <span id="phoneDisplay"></span></div>
-            <div class="user-info">💰 <span id="coinsDisplay">0</span></div>
-            <div class="user-info">⚡ قوة النقرة: <span id="clickPowerDisplay">1</span></div>
-            <div class="user-info">🤖 نقرة تلقائية: <span id="autoClickerDisplay">0</span></div>
+        <canvas id="gameCanvas" width="900" height="600"></canvas>
+        <div class="info-panel">
+            <span>👤 <span id="playerName"></span></span>
+            <span>⭐ النقاط: <span id="score">0</span></span>
+            <span>⚡ السرعة: Lv <span id="speedLv">1</span></span>
+            <span>🏆 الترتيب: <span id="rank">-</span></span>
         </div>
-
-        <div class="planet-area">
-            <div class="planet" id="planetBtn">🌍</div>
-        </div>
-
-        <div class="score-board">⭐ نقاطك: <span id="coinsBig">0</span></div>
-
-        <div class="upgrades">
-            <div class="upgrade-card">
-                <h3>💪 قوة النقرة +1</h3>
-                <p>السعر: <span id="clickPowerCost">50</span></p>
-                <button id="buyClickPowerBtn">شراء</button>
-            </div>
-            <div class="upgrade-card">
-                <h3>🤖 نقرة تلقائية +1/ث</h3>
-                <p>السعر: <span id="autoClickerCost">200</span></p>
-                <button id="buyAutoClickerBtn">شراء</button>
-            </div>
-        </div>
-
-        <div class="friends-section">
-            <h3>👥 أصدقائي</h3>
-            <div id="friendsList" class="friend-list"></div>
-            <div class="add-friend-form">
-                <input type="text" id="friendNameInput" placeholder="اسم المستخدم">
-                <button id="addFriendBtn">➕ إضافة صديق</button>
-            </div>
-        </div>
-        <div id="statusMsg" class="status"></div>
+        <div class="status" id="statusMsg">🕹️ استخدم الأزرار على الشاشة أو لوحة المفاتيح (↑ ↓ ← →)</div>
+    </div>
+    <div class="touch-buttons">
+        <div class="touch-btn" data-dir="up">▲</div>
+        <div class="touch-btn" data-dir="left">◀</div>
+        <div class="touch-btn" data-dir="down">▼</div>
+        <div class="touch-btn" data-dir="right">▶</div>
     </div>
 </div>
 
 <script>
     const socket = io();
-    let currentUserKey = null;
-    let autoClickerInterval = null;
+    let canvas = document.getElementById('gameCanvas');
+    let ctx = canvas.getContext('2d');
+    let myId = null;
+    let players = {};
+    let myPlayer = null;
+    let mapGrid = [];
+    let animationId = null;
+    const CELL_SIZE = 20;
+    const MAP_W = 30, MAP_H = 30;
+    canvas.width = MAP_W * CELL_SIZE;
+    canvas.height = MAP_H * CELL_SIZE;
 
-    // DOM elements
+    // أزرار اللمس
+    const touchBtns = document.querySelectorAll('.touch-btn');
+    touchBtns.forEach(btn => {
+        const dir = btn.getAttribute('data-dir');
+        btn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            socket.emit('move', dir);
+        });
+        btn.addEventListener('mousedown', () => socket.emit('move', dir));
+    });
+
+    // تسجيل الدخول
     const loginScreen = document.getElementById('loginScreen');
     const gameArea = document.getElementById('gameArea');
     const loginName = document.getElementById('loginName');
     const loginPhone = document.getElementById('loginPhone');
     const loginBtn = document.getElementById('loginBtn');
     const loginError = document.getElementById('loginError');
-    const usernameDisplay = document.getElementById('usernameDisplay');
-    const phoneDisplay = document.getElementById('phoneDisplay');
-    const coinsDisplay = document.getElementById('coinsDisplay');
-    const coinsBig = document.getElementById('coinsBig');
-    const clickPowerDisplay = document.getElementById('clickPowerDisplay');
-    const autoClickerDisplay = document.getElementById('autoClickerDisplay');
-    const clickPowerCostSpan = document.getElementById('clickPowerCost');
-    const autoClickerCostSpan = document.getElementById('autoClickerCost');
-    const planetBtn = document.getElementById('planetBtn');
-    const buyClickPowerBtn = document.getElementById('buyClickPowerBtn');
-    const buyAutoClickerBtn = document.getElementById('buyAutoClickerBtn');
-    const friendsListDiv = document.getElementById('friendsList');
-    const friendNameInput = document.getElementById('friendNameInput');
-    const addFriendBtn = document.getElementById('addFriendBtn');
+    const playerNameSpan = document.getElementById('playerName');
+    const scoreSpan = document.getElementById('score');
+    const speedLvSpan = document.getElementById('speedLv');
+    const rankSpan = document.getElementById('rank');
     const statusMsgDiv = document.getElementById('statusMsg');
 
-    let currentCoins = 0;
-    let currentClickPower = 1;
-    let currentAutoClicker = 0;
-    let friends = [];
-
-    function showStatus(msg, isError = false) {
-        statusMsgDiv.innerHTML = `<span style="color:${isError ? '#ffaaaa' : '#88ffaa'}">${msg}</span>`;
-        setTimeout(() => { if (statusMsgDiv.innerHTML.includes(msg)) statusMsgDiv.innerHTML = ''; }, 3000);
-    }
-
-    function updateUI() {
-        coinsDisplay.innerText = currentCoins;
-        coinsBig.innerText = currentCoins;
-        clickPowerDisplay.innerText = currentClickPower;
-        autoClickerDisplay.innerText = currentAutoClicker;
-        clickPowerCostSpan.innerText = 50 + (currentClickPower - 1) * 30;
-        autoClickerCostSpan.innerText = 200 + (currentAutoClicker) * 100;
-        friendsListDiv.innerHTML = '';
-        friends.forEach(friend => {
-            const div = document.createElement('div');
-            div.className = 'friend-item';
-            div.innerHTML = `
-                👤 ${friend}
-                <button class="send-coins" data-friend="${friend}">💰 إرسال نقود</button>
-            `;
-            friendsListDiv.appendChild(div);
-        });
-        document.querySelectorAll('.send-coins').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const friend = btn.getAttribute('data-friend');
-                const amount = prompt(`كم نقطة تريد إرسالها إلى ${friend}؟`, '10');
-                if (amount && !isNaN(amount) && parseInt(amount) > 0) {
-                    socket.emit('send-coins', { toName: friend, amount: parseInt(amount) });
-                } else if (amount !== null) alert('أدخل رقماً صحيحاً أكبر من 0');
-            });
-        });
-    }
-
-    function startAutoClicker() {
-        if (autoClickerInterval) clearInterval(autoClickerInterval);
-        if (currentAutoClicker > 0) {
-            autoClickerInterval = setInterval(() => {
-                socket.emit('click-planet');
-            }, 1000);
-        }
-    }
-
-    // Socket events
-    socket.on('init-data', (data) => {
-        currentCoins = data.coins;
-        currentClickPower = data.clickPower;
-        currentAutoClicker = data.autoClicker;
-        friends = data.friends;
-        updateUI();
-        startAutoClicker();
-    });
-
-    socket.on('coins-update', (data) => {
-        currentCoins = data.coins;
-        updateUI();
-    });
-
-    socket.on('upgrade-bought', (data) => {
-        if (data.type === 'clickPower') currentClickPower = data.newValue;
-        else if (data.type === 'autoClicker') {
-            currentAutoClicker = data.newValue;
-            startAutoClicker();
-        }
-        currentCoins = data.coins;
-        updateUI();
-        showStatus(`✅ تم شراء الترقية!`);
-    });
-
-    socket.on('received-coins', (data) => {
-        showStatus(`🎁 استلمت ${data.amount} نقطة من ${data.from}`);
-    });
-
-    socket.on('coins-sent', (data) => {
-        showStatus(`✅ تم إرسال ${data.amount} نقطة إلى ${data.to}`);
-    });
-
-    socket.on('error', (msg) => {
-        showStatus(`❌ ${msg}`, true);
-    });
-
-    // Game buttons
-    planetBtn.addEventListener('click', () => socket.emit('click-planet'));
-    buyClickPowerBtn.addEventListener('click', () => socket.emit('buy-upgrade', { type: 'clickPower' }));
-    buyAutoClickerBtn.addEventListener('click', () => socket.emit('buy-upgrade', { type: 'autoClicker' }));
-
-    // Add friend
-    addFriendBtn.addEventListener('click', async () => {
-        const friendName = friendNameInput.value.trim();
-        if (!friendName) return;
-        try {
-            const res = await fetch('/api/add-friend', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ friendName })
-            });
-            const data = await res.json();
-            if (res.ok) {
-                friends = data.friends;
-                updateUI();
-                friendNameInput.value = '';
-                showStatus(`✅ تم إضافة ${friendName} كصديق`);
-            } else {
-                showStatus(`❌ ${data.error}`, true);
-            }
-        } catch(e) { showStatus('خطأ في الاتصال', true); }
-    });
-
-    // Login / Register
     loginBtn.onclick = async () => {
         const name = loginName.value.trim();
         const phone = loginPhone.value.trim();
-        if (!name || !phone) {
-            loginError.innerText = 'الرجاء إدخال الاسم ورقم الهاتف';
-            return;
-        }
+        if (!name || !phone) { loginError.innerText = 'الرجاء إدخال الاسم ورقم الهاتف'; return; }
         try {
             const res = await fetch('/api/login', {
                 method: 'POST',
@@ -356,26 +192,119 @@
                 body: JSON.stringify({ name, phone })
             });
             const data = await res.json();
-            if (data.success) {
-                currentUserKey = `${name}|${phone}`;
-                usernameDisplay.innerText = data.userData.name;
-                phoneDisplay.innerText = data.userData.phone;
-                currentCoins = data.userData.coins;
-                currentClickPower = data.userData.clickPower;
-                currentAutoClicker = data.userData.autoClicker;
-                friends = data.userData.friends;
-                updateUI();
-                startAutoClicker();
-                socket.emit('user-login', currentUserKey);
-                loginScreen.style.display = 'none';
-                gameArea.style.display = 'block';
-            } else {
-                loginError.innerText = data.error;
-            }
-        } catch(e) {
-            loginError.innerText = 'خطأ في الاتصال';
+            if (!res.ok) throw new Error(data.error);
+            playerNameSpan.innerText = name;
+            socket.emit('login', { name, phone });
+            loginScreen.style.display = 'none';
+            gameArea.style.display = 'block';
+        } catch(err) {
+            loginError.innerText = `❌ خطأ: ${err.message}`;
         }
     };
+
+    // أحداث Socket
+    socket.on('init', (data) => {
+        myId = data.player.id;
+        myPlayer = data.player;
+        players = {};
+        data.players.forEach(p => { players[p.id] = p; });
+        mapGrid = data.map;
+        updateUI();
+        startGameLoop();
+    });
+
+    socket.on('player-joined', (p) => {
+        players[p.id] = p;
+    });
+
+    socket.on('player-left', (id) => {
+        delete players[id];
+    });
+
+    socket.on('player-move', (move) => {
+        if (players[move.id]) {
+            players[move.id].x = move.x;
+            players[move.id].y = move.y;
+            players[move.id].trail = move.trail;
+        }
+        if (move.id === myId && myPlayer) {
+            myPlayer.x = move.x;
+            myPlayer.y = move.y;
+            myPlayer.trail = move.trail;
+        }
+    });
+
+    socket.on('game-over', (data) => {
+        statusMsgDiv.innerText = `😵 لقد مت! سيتم إعادة تشكيلك بعد ثانيتين. النقاط: ${data.score}`;
+        setTimeout(() => statusMsgDiv.innerText = 'استخدم الأزرار للتحرك', 2000);
+    });
+
+    socket.on('respawn', (pos) => {
+        if (myPlayer) {
+            myPlayer.x = pos.x;
+            myPlayer.y = pos.y;
+            myPlayer.trail = [];
+        }
+    });
+
+    function updateUI() {
+        if (myPlayer) {
+            scoreSpan.innerText = myPlayer.score;
+            speedLvSpan.innerText = myPlayer.speed;
+            let sorted = Object.values(players).sort((a,b) => b.score - a.score);
+            let rank = sorted.findIndex(p => p.id === myId) + 1;
+            rankSpan.innerText = rank > 0 ? rank : '-';
+        }
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        for (let i = 0; i < MAP_W; i++) {
+            for (let j = 0; j < MAP_H; j++) {
+                let owner = mapGrid[i]?.[j];
+                let color = owner && players[owner] ? players[owner].color : '#2a3a3a';
+                ctx.fillStyle = color;
+                ctx.fillRect(i*CELL_SIZE, j*CELL_SIZE, CELL_SIZE-1, CELL_SIZE-1);
+            }
+        }
+        for (let id in players) {
+            let p = players[id];
+            if (p.trail && p.trail.length) {
+                ctx.fillStyle = p.color;
+                for (let t of p.trail) {
+                    ctx.fillRect(t.x*CELL_SIZE, t.y*CELL_SIZE, CELL_SIZE-1, CELL_SIZE-1);
+                }
+            }
+        }
+        for (let id in players) {
+            let p = players[id];
+            ctx.fillStyle = p.color;
+            ctx.beginPath();
+            ctx.arc(p.x*CELL_SIZE + CELL_SIZE/2, p.y*CELL_SIZE + CELL_SIZE/2, CELL_SIZE/2 - 2, 0, 2*Math.PI);
+            ctx.fill();
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 10px Arial';
+            ctx.fillText(p.name.substring(0,2), p.x*CELL_SIZE+4, p.y*CELL_SIZE+14);
+        }
+    }
+
+    let keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false };
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowUp') socket.emit('move', 'up');
+        if (e.key === 'ArrowDown') socket.emit('move', 'down');
+        if (e.key === 'ArrowLeft') socket.emit('move', 'left');
+        if (e.key === 'ArrowRight') socket.emit('move', 'right');
+        e.preventDefault();
+    });
+
+    function startGameLoop() {
+        function animate() {
+            draw();
+            requestAnimationFrame(animate);
+        }
+        animate();
+        setInterval(() => updateUI(), 200);
+    }
 </script>
 </body>
 </html>

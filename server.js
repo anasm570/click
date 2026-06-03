@@ -1,192 +1,197 @@
 const express = require('express');
-const session = require('express-session');
 const http = require('http');
 const socketIo = require('socket.io');
 const path = require('path');
-const fs = require('fs');
 
 const app = express();
 const server = http.createServer(app);
-const io = socketIo(server);
+const io = socketIo(server, { cors: { origin: '*' } });
 
 const PORT = process.env.PORT || 3000;
 
-app.use(session({
-    secret: 'planet-clicker-secret',
-    resave: false,
-    saveUninitialized: true,
-    cookie: { secure: false }
-}));
-
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 app.use(express.static(__dirname));
 
-// ------------------- ملف تخزين البيانات -------------------
-const USERS_FILE = path.join(__dirname, 'users.json');
-function loadUsers() {
-    if (!fs.existsSync(USERS_FILE)) return {};
-    try {
-        return JSON.parse(fs.readFileSync(USERS_FILE));
-    } catch(e) { return {}; }
-}
-function saveUsers(users) {
-    fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
-}
+// ---------- تخزين مؤقت في الذاكرة (لبيئة Serverless) ----------
+let users = {};        // key "name|phone" -> { name, phone, score, speed, friends }
+let players = {};     // socket.id -> بيانات اللاعب في اللعبة
+let grid = Array(30).fill().map(() => Array(30).fill(null));
 
-// ------------------- API: تسجيل الدخول / إنشاء حساب بالاسم ورقم الهاتف -------------------
+// ---------- API المصادقة (بدون كتابة ملفات) ----------
 app.post('/api/login', (req, res) => {
     const { name, phone } = req.body;
     if (!name || !phone) return res.status(400).json({ error: 'الاسم ورقم الهاتف مطلوبان' });
-    let users = loadUsers();
     const key = `${name}|${phone}`;
     let user = users[key];
     if (!user) {
-        // إنشاء مستخدم جديد
-        user = {
-            name,
-            phone,
-            coins: 0,
-            clickPower: 1,
-            autoClicker: 0,
-            friends: [],
-            createdAt: new Date().toISOString()
-        };
+        user = { name, phone, score: 0, speed: 1, friends: [] };
         users[key] = user;
-        saveUsers(users);
     }
-    req.session.userKey = key;
-    req.session.userName = name;
-    res.json({ success: true, message: `مرحباً ${name}`, userData: {
-        name, phone,
-        coins: user.coins,
-        clickPower: user.clickPower,
-        autoClicker: user.autoClicker,
-        friends: user.friends
-    } });
+    res.json({ success: true, userData: { name, phone, score: user.score, speed: user.speed, friends: user.friends } });
 });
 
-app.get('/api/me', (req, res) => {
-    if (!req.session.userKey) return res.status(401).json({ error: 'غير مسجل' });
-    let users = loadUsers();
-    let user = users[req.session.userKey];
-    if (!user) return res.status(404).json({ error: 'مستخدم غير موجود' });
-    res.json({
-        name: user.name,
-        phone: user.phone,
-        coins: user.coins,
-        clickPower: user.clickPower,
-        autoClicker: user.autoClicker,
-        friends: user.friends
-    });
+app.post('/api/update-score', (req, res) => {
+    const { key, score, speed } = req.body;
+    if (users[key]) {
+        users[key].score = score;
+        users[key].speed = speed;
+        res.json({ success: true });
+    } else {
+        res.status(404).json({ error: 'مستخدم غير موجود' });
+    }
 });
 
-app.post('/api/add-friend', (req, res) => {
-    if (!req.session.userKey) return res.status(401).json({ error: 'غير مسجل' });
-    let { friendName } = req.body;
-    if (friendName === req.session.userName) return res.status(400).json({ error: 'لا يمكن إضافة نفسك' });
-    let users = loadUsers();
-    let friendKey = null;
-    for (let k in users) {
-        if (users[k].name === friendName) {
-            friendKey = k;
-            break;
+// ---------- منطق اللعبة ----------
+const MAP_W = 30, MAP_H = 30;
+const DIRECTIONS = { up: { x: 0, y: -1 }, down: { x: 0, y: 1 }, left: { x: -1, y: 0 }, right: { x: 1, y: 0 } };
+
+function getRandomEmptyCell() {
+    for (let i = 0; i < 200; i++) {
+        let x = Math.floor(Math.random() * MAP_W);
+        let y = Math.floor(Math.random() * MAP_H);
+        if (grid[x][y] === null) return { x, y };
+    }
+    return { x: 5, y: 5 };
+}
+
+function addPlayer(socketId, name, speed = 1) {
+    let start = getRandomEmptyCell();
+    players[socketId] = {
+        id: socketId,
+        name,
+        x: start.x,
+        y: start.y,
+        direction: 'right',
+        trail: [],
+        territory: [{ x: start.x, y: start.y }],
+        score: 0,
+        speed,
+        color: `hsl(${Math.random() * 360}, 70%, 55%)`,
+        active: true
+    };
+    grid[start.x][start.y] = socketId;
+    return players[socketId];
+}
+
+function removePlayer(socketId) {
+    if (players[socketId]) {
+        for (let tile of players[socketId].territory) {
+            if (grid[tile.x] && grid[tile.x][tile.y] === socketId) grid[tile.x][tile.y] = null;
         }
+        delete players[socketId];
     }
-    if (!friendKey) return res.status(404).json({ error: 'المستخدم غير موجود' });
-    let currentUser = users[req.session.userKey];
-    if (currentUser.friends.includes(friendName)) return res.status(400).json({ error: 'الصديق موجود بالفعل' });
-    currentUser.friends.push(friendName);
-    saveUsers(users);
-    res.json({ success: true, friends: currentUser.friends });
-});
+}
 
-// ------------------- Socket.IO -------------------
 io.on('connection', (socket) => {
     let currentUserKey = null;
 
-    socket.on('user-login', (userKey) => {
-        currentUserKey = userKey;
-        socket.join(`user:${userKey}`);
-        let users = loadUsers();
-        let user = users[userKey];
-        if (user) {
-            socket.emit('init-data', {
-                coins: user.coins,
-                clickPower: user.clickPower,
-                autoClicker: user.autoClicker,
-                friends: user.friends
-            });
-        }
+    socket.on('login', ({ name, phone }) => {
+        currentUserKey = `${name}|${phone}`;
+        let user = users[currentUserKey] || { score: 0, speed: 1 };
+        let newPlayer = addPlayer(socket.id, name, user.speed);
+        newPlayer.score = user.score;
+        socket.emit('init', {
+            player: { id: socket.id, x: newPlayer.x, y: newPlayer.y, color: newPlayer.color, score: newPlayer.score, speed: newPlayer.speed },
+            map: grid,
+            players: Object.keys(players).map(id => ({
+                id, name: players[id].name, x: players[id].x, y: players[id].y,
+                color: players[id].color, score: players[id].score
+            }))
+        });
+        socket.broadcast.emit('player-joined', { id: socket.id, name, x: newPlayer.x, y: newPlayer.y, color: newPlayer.color });
     });
 
-    socket.on('click-planet', () => {
-        if (!currentUserKey) return;
-        let users = loadUsers();
-        let user = users[currentUserKey];
-        if (!user) return;
-        user.coins += user.clickPower;
-        saveUsers(users);
-        io.to(`user:${currentUserKey}`).emit('coins-update', { coins: user.coins });
+    socket.on('move', (dir) => {
+        let p = players[socket.id];
+        if (!p || !p.active) return;
+        if ((dir === 'right' && p.direction === 'left') ||
+            (dir === 'left' && p.direction === 'right') ||
+            (dir === 'up' && p.direction === 'down') ||
+            (dir === 'down' && p.direction === 'up')) return;
+        p.direction = dir;
     });
 
-    socket.on('buy-upgrade', ({ type }) => {
-        if (!currentUserKey) return;
-        let users = loadUsers();
-        let user = users[currentUserKey];
-        if (!user) return;
-        let cost = 0;
-        if (type === 'clickPower') {
-            cost = 50 + (user.clickPower - 1) * 30;
-            if (user.coins >= cost) {
-                user.coins -= cost;
-                user.clickPower++;
-                saveUsers(users);
-                io.to(`user:${currentUserKey}`).emit('upgrade-bought', { type, newValue: user.clickPower, coins: user.coins });
-            } else socket.emit('error', 'نقود غير كافية');
-        } else if (type === 'autoClicker') {
-            cost = 200 + (user.autoClicker) * 100;
-            if (user.coins >= cost) {
-                user.coins -= cost;
-                user.autoClicker++;
-                saveUsers(users);
-                io.to(`user:${currentUserKey}`).emit('upgrade-bought', { type, newValue: user.autoClicker, coins: user.coins });
-            } else socket.emit('error', 'نقود غير كافية');
-        }
-    });
-
-    socket.on('send-coins', ({ toName, amount }) => {
-        if (!currentUserKey) return;
-        if (toName === users[currentUserKey]?.name) return socket.emit('error', 'لا يمكن إرسال نقود لنفسك');
-        let users = loadUsers();
-        let sender = users[currentUserKey];
-        if (!sender) return;
-        let receiverKey = null;
-        for (let k in users) {
-            if (users[k].name === toName) {
-                receiverKey = k;
-                break;
-            }
-        }
-        if (!receiverKey) return socket.emit('error', 'المستخدم غير موجود');
-        let receiver = users[receiverKey];
-        if (sender.coins < amount) return socket.emit('error', 'نقود غير كافية');
-        if (amount <= 0) return socket.emit('error', 'المبلغ يجب أن يكون أكبر من 0');
-        sender.coins -= amount;
-        receiver.coins += amount;
-        saveUsers(users);
-        io.to(`user:${currentUserKey}`).emit('coins-update', { coins: sender.coins });
-        io.to(`user:${receiverKey}`).emit('coins-update', { coins: receiver.coins });
-        io.to(`user:${receiverKey}`).emit('received-coins', { from: sender.name, amount });
-        socket.emit('coins-sent', { to: toName, amount });
+    socket.on('disconnect', () => {
+        removePlayer(socket.id);
+        io.emit('player-left', socket.id);
     });
 });
 
-// ------------------- الصفحة الرئيسية -------------------
+// حلقة اللعبة (كل 100 مللي ثانية)
+setInterval(() => {
+    for (let id in players) {
+        let p = players[id];
+        if (!p.active) continue;
+        let step = p.speed;
+        let dir = DIRECTIONS[p.direction];
+        if (!dir) continue;
+        let newX = p.x + dir.x;
+        let newY = p.y + dir.y;
+
+        // حدود اللوحة
+        if (newX < 0 || newX >= MAP_W || newY < 0 || newY >= MAP_H) {
+            p.active = false;
+            io.to(id).emit('game-over', { score: p.score });
+            setTimeout(() => {
+                if (players[id]) {
+                    let start = getRandomEmptyCell();
+                    p.x = start.x;
+                    p.y = start.y;
+                    p.direction = 'right';
+                    p.trail = [];
+                    p.territory = [{ x: start.x, y: start.y }];
+                    p.active = true;
+                    grid[start.x][start.y] = id;
+                    io.to(id).emit('respawn', { x: start.x, y: start.y });
+                }
+            }, 2000);
+            continue;
+        }
+
+        let owner = grid[newX][newY];
+        if (owner === id || owner === null) {
+            p.x = newX;
+            p.y = newY;
+            if (owner !== id) {
+                p.trail.push({ x: newX, y: newY });
+                grid[newX][newY] = id;
+            } else {
+                if (p.trail.length > 0) {
+                    let newCells = [...p.trail, { x: newX, y: newY }];
+                    for (let cell of newCells) {
+                        if (!p.territory.some(t => t.x === cell.x && t.y === cell.y)) {
+                            p.territory.push(cell);
+                            p.score += 5;
+                        }
+                        grid[cell.x][cell.y] = id;
+                    }
+                    p.trail = [];
+                }
+            }
+            io.emit('player-move', { id, x: p.x, y: p.y, direction: p.direction, trail: p.trail });
+        } else {
+            // اصطدام بلاعب آخر
+            p.active = false;
+            io.to(id).emit('game-over', { score: p.score });
+            setTimeout(() => {
+                if (players[id]) {
+                    let start = getRandomEmptyCell();
+                    p.x = start.x;
+                    p.y = start.y;
+                    p.direction = 'right';
+                    p.trail = [];
+                    p.territory = [{ x: start.x, y: start.y }];
+                    p.active = true;
+                    grid[start.x][start.y] = id;
+                    io.to(id).emit('respawn', { x: start.x, y: start.y });
+                }
+            }, 2000);
+        }
+    }
+}, 100);
+
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-server.listen(PORT, () => {
-    console.log(`✅ Planet Clicker يعمل على http://localhost:${PORT}`);
-});
+server.listen(PORT, () => console.log(`✅ Paper.io 2 يعمل على http://localhost:${PORT}`));
